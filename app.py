@@ -294,7 +294,6 @@ if chart_mode == "Rates":
             ))
 
     fig.update_yaxes(title_text="Rate (%)", ticksuffix="%", rangemode="tozero", dtick=1)
-    fig.update_layout(title="Interest Rates — Daily")
 
 else:
     # Spread mode: calculate basis point differences
@@ -337,7 +336,6 @@ else:
     # Zero line
     fig.add_hline(y=0, line_dash="solid", line_color="#2d3139", line_width=1.5)
     fig.update_yaxes(title_text="Spread (bps)", ticksuffix=" bps")
-    fig.update_layout(title="Rate Spreads — Monthly Averages")
 
 # Shared layout styling
 fig.update_layout(
