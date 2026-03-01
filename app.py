@@ -135,13 +135,7 @@ def load_data(api_key, series_dict, start_date, end_date=None):
 with st.sidebar:
     st.markdown("## ⚙️ Settings")
 
-    # API Key input (so you don't have to hardcode it)
-    api_key = st.text_input(
-        "FRED API Key",
-        value=FRED_API_KEY if FRED_API_KEY != "YOUR_FRED_API_KEY_HERE" else "",
-        type="password",
-        help="Get a free key at https://fred.stlouisfed.org/docs/api/api_key.html"
-    )
+    api_key = FRED_API_KEY
 
     st.markdown("---")
 
