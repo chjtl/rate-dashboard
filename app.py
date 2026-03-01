@@ -15,8 +15,13 @@ from datetime import datetime, timedelta
 # CONFIGURATION
 # ─────────────────────────────────────────────
 
-# Your FRED API key goes here (get one free at https://fred.stlouisfed.org/docs/api/api_key.html)
-FRED_API_KEY = "b060d1c9daaaf60edcbf023cac29364a"
+# Your FRED API key — loaded from Streamlit secrets (cloud) or fallback (local)
+# On Streamlit Cloud, this is set in the app's Secrets settings
+# Locally, you can create a file at .streamlit/secrets.toml with: FRED_API_KEY = "your_key"
+try:
+    FRED_API_KEY = st.secrets["FRED_API_KEY"]
+except Exception:
+    FRED_API_KEY = "YOUR_FRED_API_KEY_HERE"  # Will prompt user in sidebar if not set
 
 # Define the data series we want to pull.
 # You can add more series later just by adding rows here!
