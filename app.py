@@ -148,6 +148,7 @@ with st.sidebar:
     # Date range selector
     st.markdown("### Date Range")
     range_options = {
+        "1 Month": 30,
         "1 Year": 365,
         "2 Years": 730,
         "3 Years": 1095,
@@ -158,7 +159,7 @@ with st.sidebar:
     selected_range = st.radio(
         "Select range",
         options=list(range_options.keys()),
-        index=4,  # Default to "All"
+        index=0,  # Default to "1 Month"
         label_visibility="collapsed",
     )
 
