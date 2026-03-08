@@ -10,6 +10,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from fredapi import Fred
 from datetime import datetime, timedelta
+import yfinance as yf
 
 # ─────────────────────────────────────────────
 # CONFIGURATION
@@ -128,6 +129,19 @@ def load_data(api_key, series_dict, start_date, end_date=None):
     return df
 
 
+@st.cache_data(ttl=300)  # Cache for 5 minutes
+def load_live_10y():
+    """Fetch today's 10Y Treasury yield from Yahoo Finance (^TNX). Returns value in % or None."""
+    try:
+        ticker = yf.Ticker("^TNX")
+        hist = ticker.history(period="5d")
+        if not hist.empty:
+            return hist["Close"].iloc[-1]
+    except Exception:
+        pass
+    return None
+
+
 # ─────────────────────────────────────────────
 # SIDEBAR CONTROLS
 # ─────────────────────────────────────────────
@@ -244,12 +258,16 @@ if df.empty:
 # METRIC CARDS (top row)
 # ─────────────────────────────────────────────
 
+live_10y = load_live_10y()
+
 cols = st.columns(len(SERIES))
 
 for i, (series_id, info) in enumerate(SERIES.items()):
     with cols[i]:
         if series_id in df.columns:
-            current = df[series_id].dropna().iloc[-1]
+            fred_current = df[series_id].dropna().iloc[-1]
+            # For 10Y Treasury, use live Yahoo Finance value if available
+            current = live_10y if (series_id == "DGS10" and live_10y is not None) else fred_current
             previous = df[series_id].dropna().iloc[-2] if len(df[series_id].dropna()) > 1 else current
             change_bps = (current - previous) * 100
             period_min = df[series_id].min()
