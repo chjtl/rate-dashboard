@@ -160,21 +160,16 @@ def get_historical_fit(
     cap_col: str,
 ) -> pd.Series:
     """
-    Reconstruct one-step-ahead in-sample fitted cap-rate levels from the VECM.
+    Return in-sample fitted cap-rate levels from the VECM.
 
-    fittedvalues gives fitted Δcap_rate; adding the lagged actual level gives
-    the one-step-ahead forecast in levels at each observed period.
+    In statsmodels 0.14+, fittedvalues returns 1-step-ahead level predictions
+    for observations [k_ar : nobs_tot].  k_ar = k_ar_diff + 1.
     """
-    k        = vecm_result.k_ar_diff
-    n_fit    = len(vecm_result.fittedvalues)
-    d_fitted = vecm_result.fittedvalues[:, CAP_IDX]
-
-    cap_vals = endog[cap_col].values
-    cap_lag  = cap_vals[k : k + n_fit]        # y_{t-1} for each step
-    fitted   = cap_lag + d_fitted              # ŷ_t = y_{t-1} + Δŷ_t
-    dates    = endog.index[k + 1 : k + 1 + n_fit]
-
-    return pd.Series(fitted, index=dates, name="fitted")
+    k_ar  = vecm_result.k_ar          # k_ar = k_ar_diff + 1
+    n_fit = len(vecm_result.fittedvalues)
+    fitted_levels = vecm_result.fittedvalues[:, CAP_IDX]
+    dates = endog.index[k_ar : k_ar + n_fit]
+    return pd.Series(fitted_levels, index=dates, name="fitted")
 
 
 def compute_r2_insample(
@@ -182,16 +177,25 @@ def compute_r2_insample(
     endog: pd.DataFrame,
     cap_col: str,
 ) -> Optional[float]:
-    """R² on first-differences for the cap-rate equation (VECM native metric)."""
-    try:
-        k         = vecm_result.k_ar_diff
-        n_fit     = len(vecm_result.fittedvalues)
-        d_actual  = np.diff(endog[cap_col].values)[k - 1 : k - 1 + n_fit]
-        d_fitted  = vecm_result.fittedvalues[:, CAP_IDX]
+    """
+    R² on first-differences for the cap-rate equation.
 
-        n         = min(len(d_actual), len(d_fitted))
-        d_actual  = d_actual[:n]
-        d_fitted  = d_fitted[:n]
+    fittedvalues in statsmodels 0.14+ returns 1-step-ahead level predictions.
+    We compute implied fitted differences and compare to actual differences.
+    """
+    try:
+        k_ar  = vecm_result.k_ar      # k_ar = k_ar_diff + 1
+        n_fit = len(vecm_result.fittedvalues)
+
+        # Actual levels aligned to fittedvalues window
+        actual_levels = endog[cap_col].values[k_ar : k_ar + n_fit]
+        fitted_levels = vecm_result.fittedvalues[:, CAP_IDX]
+
+        # R² on first differences to avoid spurious I(1) inflation
+        d_actual = np.diff(actual_levels)
+        d_fitted = np.diff(fitted_levels)
+        n        = min(len(d_actual), len(d_fitted))
+        d_actual, d_fitted = d_actual[:n], d_fitted[:n]
 
         ss_res = float(np.sum((d_actual - d_fitted) ** 2))
         ss_tot = float(np.sum((d_actual - d_actual.mean()) ** 2))
