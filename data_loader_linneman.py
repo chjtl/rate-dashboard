@@ -2,8 +2,7 @@
 Data loader for the Linneman Fund Flow Cap Rate Model.
 
 Pulls from FRED:
-  - MDOAH  – mortgage debt outstanding, residential ($B, quarterly)
-  - MDOAN  – mortgage debt outstanding, nonfarm nonresidential ($B, quarterly)
+  - ASTMA  – all sectors total mortgages, asset level ($M quarterly, Z.1)
   - GDP    – nominal GDP ($B, quarterly)
   - UNRATE – unemployment rate (%, monthly → quarterly avg)
 
@@ -59,13 +58,12 @@ def load_fred_data(api_key: str) -> Tuple[pd.DataFrame, Optional[str]]:
     try:
         fred = Fred(api_key=api_key)
 
-        mdoah  = fred.get_series("MDOAH")   # residential mortgage debt, $B
-        mdoan  = fred.get_series("MDOAN")   # nonfarm nonresidential mortgage debt, $B
+        astma  = fred.get_series("ASTMA")   # all sectors total mortgages, $M (Z.1)
         gdp    = fred.get_series("GDP")     # nominal GDP, $B
         unrate = fred.get_series("UNRATE")  # unemployment rate, monthly
 
         # Normalise all to QS (quarter-start) dates
-        mort_q   = (mdoah + mdoan).resample("QS").last()
+        mort_q   = astma.resample("QS").last() / 1000  # convert $M → $B
         gdp_q    = gdp.resample("QS").last()
         unrate_q = unrate.resample("QS").mean()
 
