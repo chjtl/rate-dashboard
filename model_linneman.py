@@ -65,24 +65,30 @@ def _select_lags(endog: pd.DataFrame) -> int:
 
 # ── Public model components ──────────────────────────────────────────────────
 
-def run_johansen_test(endog: pd.DataFrame) -> Dict:
+def run_johansen_test(endog: pd.DataFrame, k_ar_diff: int = 2) -> Dict:
     """
-    Run Johansen trace cointegration test (det_order=0, k_ar_diff=2).
+    Run Johansen trace cointegration test at 10% significance (det_order=0).
+
+    Uses 10% critical values, consistent with Larriva & Linneman (2022) and
+    standard practice in cointegration testing. k_ar_diff should match the
+    VECM lag order.
 
     Returns dict with:
         rank          – selected cointegration rank (int)
         trace_stats   – list of trace statistics
-        crit_vals_95  – list of 95% critical values
+        crit_vals_95  – list of 95% critical values (displayed for reference)
+        crit_vals_90  – list of 90% critical values (used for rank selection)
         eigenvalues   – list of eigenvalues
         summary       – human-readable string
     """
     try:
-        result = coint_johansen(endog.values, det_order=0, k_ar_diff=2)
+        result = coint_johansen(endog.values, det_order=0, k_ar_diff=k_ar_diff)
         trace  = result.lr1.tolist()
-        cv95   = result.cvt[:, 1].tolist()
+        cv90   = result.cvt[:, 0].tolist()   # 90% critical values
+        cv95   = result.cvt[:, 1].tolist()   # 95% critical values (display only)
 
         rank = 0
-        for i, (stat, cv) in enumerate(zip(trace, cv95)):
+        for i, (stat, cv) in enumerate(zip(trace, cv90)):
             if stat > cv:
                 rank = i + 1
             else:
@@ -92,13 +98,14 @@ def run_johansen_test(endog: pd.DataFrame) -> Dict:
             "rank":          rank,
             "trace_stats":   trace,
             "crit_vals_95":  cv95,
+            "crit_vals_90":  cv90,
             "eigenvalues":   result.eig.tolist(),
-            "summary":       f"Johansen trace test: rank = {rank} (95% confidence)",
+            "summary":       f"Johansen trace test: rank = {rank} (90% confidence)",
             "error":         None,
         }
     except Exception as exc:
         return {
-            "rank": 1, "trace_stats": [], "crit_vals_95": [],
+            "rank": 1, "trace_stats": [], "crit_vals_95": [], "crit_vals_90": [],
             "eigenvalues": [], "summary": "Johansen test failed", "error": str(exc),
         }
 
@@ -304,16 +311,16 @@ def run_full_model(data: pd.DataFrame, sector: str) -> Dict:
         "unemp_series": data["unemployment_rate"],
     }
 
+    # ── Lag selection (must precede Johansen so both use same order) ──────────
+    k_ar_diff = _select_lags(endog)
+
     # ── Johansen ──────────────────────────────────────────────────────────────
-    johansen   = run_johansen_test(endog)
+    johansen   = run_johansen_test(endog, k_ar_diff=k_ar_diff)
     out["johansen"] = johansen
     coint_rank = max(1, johansen["rank"])
 
     # ── Granger ───────────────────────────────────────────────────────────────
     out["granger"] = run_granger_tests(endog, cap_col)
-
-    # ── Fit VECM ──────────────────────────────────────────────────────────────
-    k_ar_diff = _select_lags(endog)
     out["k_ar_diff"] = k_ar_diff
     try:
         vecm_res = fit_vecm(endog, coint_rank, k_ar_diff)
