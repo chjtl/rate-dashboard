@@ -1,5 +1,5 @@
 """
-Linneman Fund Flow Cap Rate Model — VECM implementation.
+Linneman Fund Flow Cap Rate Model — VECM implementation.  # v2
 
 Reference: Larriva & Linneman (2022), JPIF Vol. 40 No. 2, pp. 119–169.
            Linneman REFAI Textbook, Chapter 9 Supplement C.
