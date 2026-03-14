@@ -104,7 +104,7 @@ def load_ncreif_data() -> pd.DataFrame:
         df = pd.read_csv(NCREIF_CSV_PATH, parse_dates=["date"])
         df = df.set_index("date")
         # Normalise to QS in case dates aren't already quarter-start
-        df.index = df.index.to_period("Q").to_timestamp("QS")
+        df.index = df.index.to_period("Q").to_timestamp()
         df.index.name = "date"
         df = df.sort_index()
 

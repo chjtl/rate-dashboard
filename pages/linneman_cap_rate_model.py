@@ -359,15 +359,11 @@ if mf_res and "error" not in mf_res or of_res and "error" not in of_res:
         fig1.add_vline(
             x=last_date, line_dash="dot", line_color="#2d3139", line_width=1
         )
-        layout1 = dict(
+        layout1 = {
             **_LAYOUT,
-            yaxis=dict(
-                **_LAYOUT["yaxis"],
-                title_text="Cap Rate (%)",
-                ticksuffix="%",
-            ),
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
-        )
+            "yaxis": {**_LAYOUT["yaxis"], "title_text": "Cap Rate (%)", "ticksuffix": "%"},
+            "legend": dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
+        }
         fig1.update_layout(**layout1)
         st.plotly_chart(fig1, use_container_width=True)
     else:
@@ -416,10 +412,7 @@ if not fred_df.empty and "mortgage_debt_pct_gdp" in fred_df.columns:
         ax=-40, ay=-40,
     )
 
-    layout2 = dict(
-        **_LAYOUT,
-        yaxis=dict(**_LAYOUT["yaxis"], title_text="% of GDP", ticksuffix="%"),
-    )
+    layout2 = {**_LAYOUT, "yaxis": {**_LAYOUT["yaxis"], "title_text": "% of GDP", "ticksuffix": "%"}}
     fig2.update_layout(**layout2)
     st.plotly_chart(fig2, use_container_width=True)
 
@@ -459,10 +452,7 @@ if not fred_df.empty and "unemployment_rate" in fred_df.columns:
         line=dict(color="#A78BFA", width=2),
         hovertemplate="%{x|%Y-Q}: %{y:.1f}%<extra></extra>",
     ))
-    layout3 = dict(
-        **_LAYOUT,
-        yaxis=dict(**_LAYOUT["yaxis"], title_text="Rate (%)", ticksuffix="%"),
-    )
+    layout3 = {**_LAYOUT, "yaxis": {**_LAYOUT["yaxis"], "title_text": "Rate (%)", "ticksuffix": "%"}}
     fig3.update_layout(**layout3)
     st.plotly_chart(fig3, use_container_width=True)
 else:
