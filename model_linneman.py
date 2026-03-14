@@ -269,6 +269,73 @@ def compute_sensitivity(vecm_result: Any) -> Dict:
         }
 
 
+# ── Office structural deviation monitor ──────────────────────────────────────
+
+def run_office_deviation_model(data: pd.DataFrame) -> Dict:
+    """
+    Fit the fund flow VECM on pre-2020 office data, then project forward.
+
+    The gap between the projection and actual post-2020 office cap rates
+    quantifies the structural WFH premium — how much higher cap rates are
+    than the historical fund flow relationship would predict.
+
+    Returns dict with:
+        actual_series_full   – full office cap rate history
+        actual_series_post   – post-2020 actuals
+        projected_series     – model projection from 2020 Q1 onward
+        gap_series           – actual minus projected (positive = structural premium)
+        current_gap          – latest gap in percentage points
+        cutoff               – pd.Timestamp of break point
+        error                – str if something failed, else None
+    """
+    cap_col = "office_cap_rate"
+    if cap_col not in data.columns:
+        return {"error": "office_cap_rate not in data — add it to ncreif_cap_rates.csv"}
+
+    endog_full = _build_endog(data, cap_col)
+    cutoff = pd.Timestamp("2020-01-01")
+    endog_pre = endog_full[endog_full.index < cutoff]
+
+    if len(endog_pre) < MIN_OBS:
+        return {"error": f"Only {len(endog_pre)} pre-2020 quarters — need {MIN_OBS}+"}
+
+    try:
+        k_ar_diff  = _select_lags(endog_pre)
+        johansen   = run_johansen_test(endog_pre, k_ar_diff=k_ar_diff)
+        coint_rank = max(1, johansen["rank"])
+        vecm_res   = fit_vecm(endog_pre, coint_rank, k_ar_diff)
+    except Exception as exc:
+        return {"error": f"Pre-2020 VECM failed: {exc}"}
+
+    endog_post = endog_full[endog_full.index >= cutoff]
+    n_post = len(endog_post)
+    if n_post == 0:
+        return {"error": "No post-2020 data available"}
+
+    try:
+        raw = vecm_res.predict(steps=n_post)
+        fc  = raw[0] if isinstance(raw, tuple) else raw
+        projected_vals = fc[:n_post, CAP_IDX]
+        projected = pd.Series(projected_vals, index=endog_post.index, name="projected")
+        actual_post = endog_post[cap_col]
+        gap = actual_post - projected
+
+        return {
+            "actual_series_full":  endog_full[cap_col],
+            "actual_series_post":  actual_post,
+            "projected_series":    projected,
+            "gap_series":          gap,
+            "current_gap":         round(float(gap.iloc[-1]), 2) if len(gap) else None,
+            "current_actual":      round(float(actual_post.iloc[-1]), 2) if len(actual_post) else None,
+            "current_projected":   round(float(projected.iloc[-1]), 2) if len(projected) else None,
+            "cutoff":              cutoff,
+            "pre2020_coint_rank":  coint_rank,
+            "error":               None,
+        }
+    except Exception as exc:
+        return {"error": f"Projection failed: {exc}"}
+
+
 # ── Master pipeline ──────────────────────────────────────────────────────────
 
 def run_full_model(data: pd.DataFrame, sector: str) -> Dict:

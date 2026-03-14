@@ -89,9 +89,12 @@ def load_ncreif_data() -> pd.DataFrame:
     """
     Load NCREIF NPI cap rate CSV.
 
-    Expected columns (decimal %, e.g. 4.50 means 4.50%):
+    Required columns (decimal %, e.g. 4.50 means 4.50%):
         date                  – YYYY-MM-DD, first day of quarter
         multifamily_cap_rate
+        industrial_cap_rate
+
+    Optional column (used for deviation monitor):
         office_cap_rate
 
     Returns empty DataFrame if file is missing, malformed, or lacks required
@@ -108,11 +111,15 @@ def load_ncreif_data() -> pd.DataFrame:
         df.index.name = "date"
         df = df.sort_index()
 
-        required = {"multifamily_cap_rate", "office_cap_rate"}
+        required = {"multifamily_cap_rate", "industrial_cap_rate"}
         if not required.issubset(df.columns):
             return pd.DataFrame()
 
-        return df[sorted(required)].dropna(how="all")
+        keep = sorted(required)
+        if "office_cap_rate" in df.columns:
+            keep.append("office_cap_rate")
+
+        return df[keep].dropna(how="all")
 
     except Exception:
         return pd.DataFrame()
